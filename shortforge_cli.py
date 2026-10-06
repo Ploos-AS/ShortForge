@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""ShortForge M2.8 CLI."""
+"""ShortForge command-line interface."""
 from __future__ import annotations
 import argparse, json
 from pathlib import Path
