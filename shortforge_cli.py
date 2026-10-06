@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""ShortForge M2.2 CLI."""
+"""ShortForge M2.3 CLI."""
 from __future__ import annotations
 import argparse, json
 from pathlib import Path
@@ -104,5 +104,5 @@ def main():
         print(json.dumps(variants(p) if a.cmd=="variants" else rank_variants(p),indent=2)); return
     e=validate(p)
     if e: print("\n".join(f"ERROR: {x}" for x in e)); raise SystemExit(1)
-    print("OK: valid ShortForge M2.2 project" if a.cmd=="validate" else json.dumps(score(p),indent=2))
+    print("OK: valid ShortForge M2.3 project" if a.cmd=="validate" else json.dumps(score(p),indent=2))
 if __name__=="__main__": main()
