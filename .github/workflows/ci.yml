@@ -32,3 +32,5 @@ jobs:
           shortforge score examples/retro-gag/project.yaml
           shortforge variants examples/retro-gag/variants.yaml
           shortforge select examples/retro-gag/variants.yaml
+          shortforge generate "Amiga 9000 launch" --count 3 > /tmp/generated.yaml
+          shortforge select /tmp/generated.yaml

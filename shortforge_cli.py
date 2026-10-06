@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
-"""ShortForge M1.2 CLI."""
+"""ShortForge M1.4 CLI."""
 from __future__ import annotations
 import argparse, json
 from pathlib import Path
 import yaml
+from shortforge_providers import GenerationRequest, get_provider
 REQUIRED=("version","kind","id","title","format","timeline")
 def load(path):
     with Path(path).open(encoding="utf-8") as x: return yaml.safe_load(x)
@@ -50,11 +51,17 @@ def main():
     ap=argparse.ArgumentParser(prog="shortforge"); sp=ap.add_subparsers(dest="cmd",required=True)
     for cmd in ("validate","score","variants","select"):
         q=sp.add_parser(cmd); q.add_argument("project")
-    a=ap.parse_args(); p=load(a.project)
+    g=sp.add_parser("generate"); g.add_argument("idea"); g.add_argument("--count",type=int,default=5); g.add_argument("--provider",default="deterministic"); g.add_argument("--source-project")
+    a=ap.parse_args()
+    if a.cmd=="generate":
+        try: result=get_provider(a.provider).generate_variants(GenerationRequest(a.idea,a.count,a.source_project))
+        except ValueError as e: raise SystemExit(f"ERROR: {e}")
+        print(yaml.safe_dump(result,sort_keys=False,allow_unicode=True)); return
+    p=load(a.project)
     if a.cmd in ("variants","select"):
         if p.get("kind")!="ShortForgeVariantSet": raise SystemExit("ERROR: kind must be ShortForgeVariantSet")
         print(json.dumps(variants(p) if a.cmd=="variants" else rank_variants(p),indent=2)); return
     e=validate(p)
     if e: print("\n".join(f"ERROR: {x}" for x in e)); raise SystemExit(1)
-    print("OK: valid ShortForge M1.2 project" if a.cmd=="validate" else json.dumps(score(p),indent=2))
+    print("OK: valid ShortForge M1.4 project" if a.cmd=="validate" else json.dumps(score(p),indent=2))
 if __name__=="__main__": main()
