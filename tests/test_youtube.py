@@ -1,3 +1,4 @@
+import os
 import json,tempfile,unittest
 from pathlib import Path
 from shortforge_youtube import build_youtube_plan,build_caption_upload_plan,build_caption_multipart,upload_caption,resolve_access_token,YouTubePublisher,UPLOAD_SCOPE,CAPTION_SCOPE
@@ -65,6 +66,13 @@ class TestYouTube(unittest.TestCase):
    self.assertEqual(result["video_url"],"https://youtu.be/video-456"); self.assertEqual(result["caption"]["caption_id"],"caption-456")
    self.assertEqual(json.loads(out.read_text())["video_id"],"video-456")
    self.assertEqual(len(calls),4)
+ def test_resolve_token_from_environment(self):
+  from shortforge_youtube import resolve_access_token
+  old=os.environ.get("SHORTFORGE_YOUTUBE_ACCESS_TOKEN"); os.environ["SHORTFORGE_YOUTUBE_ACCESS_TOKEN"]="env-token"
+  try: self.assertEqual(resolve_access_token(),"env-token")
+  finally:
+   if old is None: os.environ.pop("SHORTFORGE_YOUTUBE_ACCESS_TOKEN",None)
+   else: os.environ["SHORTFORGE_YOUTUBE_ACCESS_TOKEN"]=old
  def test_requires_token_for_network(self):
   with tempfile.TemporaryDirectory() as d:
    r=Path(d); self.fixture(r)
