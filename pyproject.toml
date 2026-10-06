@@ -1,0 +1,12 @@
+[project]
+name = "shortforge"
+version = "0.1.0"
+description = "AI-assisted short-form video pipeline"
+requires-python = ">=3.11"
+dependencies = ["PyYAML>=6.0"]
+
+[project.scripts]
+shortforge = "shortforge_cli:main"
+
+[tool.setuptools]
+py-modules = ["shortforge_cli"]
