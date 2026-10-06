@@ -22,6 +22,26 @@ def upload_thumbnail(video_id,thumbnail,access_token,transport=urllib.request.ur
 def build_caption_upload_plan(video_id,caption_file,language="en",name="ShortForge"):
     return {"video_id":video_id,"caption_file":str(caption_file),"language":language,"name":name,"scope":CAPTION_SCOPE,"endpoint":"https://www.googleapis.com/upload/youtube/v3/captions?part=snippet"}
 
+def build_caption_multipart(video_id,caption_file,language="en",name="ShortForge",boundary="shortforge-caption-boundary"):
+    path=Path(caption_file)
+    if not path.is_file(): raise ValueError("caption file not found")
+    if path.stat().st_size > 100*1024*1024: raise ValueError("caption file exceeds YouTube 100 MB limit")
+    meta=json.dumps({"snippet":{"videoId":video_id,"language":language,"name":name}},separators=(",",":")).encode()
+    media=path.read_bytes()
+    crlf=b"\r\n"; b=boundary.encode()
+    body=(b"--"+b+crlf+b"Content-Type: application/json; charset=UTF-8"+crlf+crlf+meta+crlf+
+          b"--"+b+crlf+b"Content-Type: application/octet-stream"+crlf+crlf+media+crlf+b"--"+b+b"--"+crlf)
+    return body,"multipart/related; boundary="+boundary
+
+def upload_caption(video_id,caption_file,access_token,language="en",name="ShortForge",transport=urllib.request.urlopen):
+    if not access_token: raise ValueError("YouTube caption upload requires OAuth access token with youtube.force-ssl")
+    body,content_type=build_caption_multipart(video_id,caption_file,language,name)
+    url="https://www.googleapis.com/upload/youtube/v3/captions?part=snippet&uploadType=multipart"
+    req=urllib.request.Request(url,data=body,method="POST",headers={"Authorization":"Bearer "+access_token,"Content-Type":content_type,"Content-Length":str(len(body))})
+    with transport(req) as resp: result=json.loads(resp.read().decode())
+    if "id" not in result: raise ValueError("YouTube caption response missing caption id")
+    return {"kind":"ShortForgeCaptionPublishResult","version":"0.1","status":"published","caption_id":result["id"],"video_id":video_id,"language":language}
+
 class YouTubePublisher(Publisher):
     name="youtube"
     def __init__(self, transport=None): self.transport=transport or urllib.request.urlopen
