@@ -72,11 +72,11 @@ def main():
     pub=sp.add_parser("package"); pub.add_argument("workspace"); pub.add_argument("--destination",default="publish"); pub.add_argument("--title")
     sp.add_parser("media-contracts")
     sp.add_parser("publishers")
-    pp=sp.add_parser("publish"); pp.add_argument("publisher",choices=PUBLISHER_INFO); pp.add_argument("package"); pp.add_argument("--destination"); pp.add_argument("--access-token"); pp.add_argument("--privacy",default="private",choices=("private","unlisted","public")); pp.add_argument("--dry-run",action="store_true")
+    pp=sp.add_parser("publish"); pp.add_argument("publisher",choices=PUBLISHER_INFO); pp.add_argument("package"); pp.add_argument("--destination"); pp.add_argument("--access-token"); pp.add_argument("--privacy",default="private",choices=("private","unlisted","public")); pp.add_argument("--caption-access-token"); pp.add_argument("--upload-captions",action="store_true"); pp.add_argument("--caption-language",default="en"); pp.add_argument("--result-file"); pp.add_argument("--dry-run",action="store_true")
     a=ap.parse_args()
     if a.cmd=="publishers": print(json.dumps(PUBLISHER_INFO,indent=2)); return
     if a.cmd=="publish":
-        try: result=get_publisher(a.publisher).publish(a.package,destination=a.destination,access_token=a.access_token,privacy=a.privacy,dry_run=a.dry_run)
+        try: result=get_publisher(a.publisher).publish(a.package,destination=a.destination,access_token=a.access_token,caption_access_token=a.caption_access_token,privacy=a.privacy,upload_captions_after=a.upload_captions,caption_language=a.caption_language,result_file=a.result_file,dry_run=a.dry_run)
         except ValueError as e: raise SystemExit(f"ERROR: {e}")
         print(json.dumps(result,indent=2)); return
     if a.cmd=="package":
