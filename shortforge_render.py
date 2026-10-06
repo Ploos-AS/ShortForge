@@ -20,13 +20,13 @@ def build_render_plan(root, output="output/short.mp4", production_profile="gener
     for a in visuals:
         r=req[a["id"]]; d=float(r["end"])-float(r["start"])
         inputs += ["-loop","1","-t",str(d),"-i",str(root/a["path"])]
-        filters.append(f"[{idx}:v]scale={profile["width"]}:{profile["height"]},setsar=1,fps={profile["fps"]}[v{idx}]"); concat.append(f"[v{idx}]"); idx+=1
+        filters.append(f"[{idx}:v]scale={profile['width']}:{profile['height']},setsar=1,fps={profile['fps']}[v{idx}]"); concat.append(f"[v{idx}]"); idx+=1
     filters.append(f"{''.join(concat)}concat=n={len(visuals)}:v=1:a=0[vbase]")
     captions=[a for a in ready if a.get("type")=="caption"]
     vlabel="vbase"
     for n,a in enumerate(captions):
         r=req[a["id"]]; text=_esc(r.get("text","")); nxt=f"vc{n}"
-        filters.append(f"[{vlabel}]drawtext=text='{text}':x=(w-text_w)/2:y=h*{profile["caption_y"]}:fontsize=64:fontcolor=white:borderw=4:enable='between(t,{r['start']},{r['end']})'[{nxt}]"); vlabel=nxt
+        filters.append(f"[{vlabel}]drawtext=text='{text}':x=(w-text_w)/2:y=h*{profile['caption_y']}:fontsize=64:fontcolor=white:borderw=4:enable='between(t,{r['start']},{r['end']})'[{nxt}]"); vlabel=nxt
     audio=[]
     for a in [x for x in ready if x.get("type") in ("voice","music","sfx")]:
         r=req[a["id"]]; inputs += ["-i",str(root/a["path"])]
