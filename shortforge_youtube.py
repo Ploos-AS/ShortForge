@@ -1,6 +1,6 @@
 """YouTube publisher request planning and resumable upload transport."""
 from pathlib import Path
-import json, os, urllib.request, urllib.parse
+import json, os, time, urllib.request, urllib.parse, urllib.error
 from shortforge_publishers import Publisher, validate_package
 
 UPLOAD_SCOPE="https://www.googleapis.com/auth/youtube.upload"
@@ -46,6 +46,47 @@ def upload_caption(video_id,caption_file,access_token,language="en",name="ShortF
     if "id" not in result: raise ValueError("YouTube caption response missing caption id")
     return {"kind":"ShortForgeCaptionPublishResult","version":"0.1","status":"published","caption_id":result["id"],"video_id":video_id,"language":language}
 
+RETRIABLE_STATUS_CODES={500,502,503,504}
+
+def _resume_offset(location,total,access_token,transport):
+    req=urllib.request.Request(location,data=b"",method="PUT",headers={"Authorization":"Bearer "+access_token,"Content-Length":"0","Content-Range":f"bytes */{total}"})
+    try:
+        with transport(req) as resp:
+            body=resp.read()
+            if body:
+                result=json.loads(body.decode())
+                if result.get("id"): return total,result
+            return total,None
+    except urllib.error.HTTPError as e:
+        if e.code!=308: raise
+        value=e.headers.get("Range","")
+        return (int(value.rsplit("-",1)[1])+1 if "-" in value else 0),None
+
+def resumable_upload(location,video,access_token,transport=urllib.request.urlopen,max_retries=5,sleep=time.sleep):
+    path=Path(video); total=path.stat().st_size; offset=0; retries=0
+    while offset<total:
+        with path.open("rb") as stream:
+            stream.seek(offset); data=stream.read()
+        headers={"Authorization":"Bearer "+access_token,"Content-Type":"video/mp4","Content-Length":str(len(data))}
+        if offset: headers["Content-Range"]=f"bytes {offset}-{total-1}/{total}"
+        req=urllib.request.Request(location,data=data,method="PUT",headers=headers)
+        try:
+            with transport(req) as resp:
+                body=resp.read()
+                result=json.loads(body.decode()) if body else {}
+                if result.get("id"): return result
+                raise ValueError("YouTube upload response missing video id")
+        except urllib.error.HTTPError as e:
+            if e.code not in RETRIABLE_STATUS_CODES and e.code!=308: raise
+        except (OSError, TimeoutError):
+            pass
+        retries+=1
+        if retries>max_retries: raise ValueError("YouTube resumable upload retry limit exceeded")
+        sleep(min(2**(retries-1),16))
+        offset,complete=_resume_offset(location,total,access_token,transport)
+        if complete: return complete
+    raise ValueError("YouTube resumable upload ended without video id")
+
 class YouTubePublisher(Publisher):
     name="youtube"
     def __init__(self, transport=None): self.transport=transport or urllib.request.urlopen
@@ -59,9 +100,7 @@ class YouTubePublisher(Publisher):
         req=urllib.request.Request(url,data=data,method="POST",headers={"Authorization":"Bearer "+access_token,"Content-Type":"application/json; charset=UTF-8","X-Upload-Content-Length":str(video.stat().st_size),"X-Upload-Content-Type":"video/mp4"})
         with self.transport(req) as resp: location=resp.headers.get("Location")
         if not location: raise ValueError("YouTube resumable session missing Location")
-        put=urllib.request.Request(location,data=video.read_bytes(),method="PUT",headers={"Authorization":"Bearer "+access_token,"Content-Type":"video/mp4","Content-Length":str(video.stat().st_size)})
-        with self.transport(put) as resp: result=json.loads(resp.read().decode())
-        if "id" not in result: raise ValueError("YouTube upload response missing video id")
+        result=resumable_upload(location,video,access_token,self.transport)
         thumb=False
         if upload_thumbnail_after:
             upload_thumbnail(result["id"],plan["thumbnail"],access_token,self.transport); thumb=True
