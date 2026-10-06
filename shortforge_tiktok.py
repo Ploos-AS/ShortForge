@@ -1,11 +1,12 @@
 """TikTok Content Posting API publisher."""
 from pathlib import Path
-import json, os, urllib.request
+import json, os, time, urllib.request
 from shortforge_publishers import Publisher, validate_package
 
 PUBLISH_SCOPE="video.publish"
 INIT_URL="https://open.tiktokapis.com/v2/post/publish/video/init/"
 CREATOR_INFO_URL="https://open.tiktokapis.com/v2/post/publish/creator_info/query/"
+STATUS_URL="https://open.tiktokapis.com/v2/post/publish/status/fetch/"
 
 def resolve_access_token(explicit=None):
     return explicit or os.environ.get("SHORTFORGE_TIKTOK_ACCESS_TOKEN")
@@ -28,6 +29,28 @@ def query_creator_info(access_token,transport=urllib.request.urlopen):
     data=result.get("data",{})
     if not data.get("privacy_level_options"): raise ValueError("TikTok creator info missing privacy options")
     return data
+
+def fetch_publish_status(publish_id,access_token,transport=urllib.request.urlopen):
+    if not publish_id: raise ValueError("TikTok publish_id is required")
+    if not access_token: raise ValueError("TikTok status requires OAuth access token")
+    payload=json.dumps({"publish_id":publish_id}).encode()
+    req=urllib.request.Request(STATUS_URL,data=payload,method="POST",headers={"Authorization":"Bearer "+access_token,"Content-Type":"application/json; charset=UTF-8"})
+    with transport(req) as resp: result=json.loads(resp.read().decode())
+    error=result.get("error",{})
+    if error.get("code") not in (None,"ok"): raise ValueError("TikTok status failed: "+str(error.get("code")))
+    data=result.get("data",{})
+    if not data.get("status"): raise ValueError("TikTok status response missing status")
+    return {"kind":"ShortForgeTikTokStatus","version":"0.1","publish_id":publish_id,"status":data["status"],"terminal":data["status"] in ("PUBLISH_COMPLETE","FAILED"),"fail_reason":data.get("fail_reason"),"post_ids":data.get("publicaly_available_post_id",[]),"uploaded_bytes":data.get("uploaded_bytes")}
+
+def poll_publish_status(publish_id,access_token,transport=urllib.request.urlopen,max_attempts=5,interval_seconds=2.0,sleep=time.sleep):
+    if max_attempts<1: raise ValueError("max_attempts must be >= 1")
+    if interval_seconds<2.0: raise ValueError("interval_seconds must be >= 2 to respect TikTok status rate limit")
+    history=[]
+    for attempt in range(max_attempts):
+        status=fetch_publish_status(publish_id,access_token,transport); history.append(status)
+        if status["terminal"]: return {"kind":"ShortForgeTikTokStatusPoll","version":"0.1","publish_id":publish_id,"terminal":True,"attempts":len(history),"result":status,"history":history}
+        if attempt+1<max_attempts: sleep(interval_seconds)
+    return {"kind":"ShortForgeTikTokStatusPoll","version":"0.1","publish_id":publish_id,"terminal":False,"attempts":len(history),"result":history[-1],"history":history}
 
 class TikTokPublisher(Publisher):
     name="tiktok"
