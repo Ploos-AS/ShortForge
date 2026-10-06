@@ -52,4 +52,8 @@ jobs:
           q=qualify_video(root+"/output/short.mp4",2)
           print(json.dumps(q,indent=2))
           if not q["passed"]: raise SystemExit(q["errors"])
+          from shortforge_publish import build_publish_package
+          p=build_publish_package(root,title="CI qualification fixture")
+          assert p["qualified"]
+          assert set(p["files"]) == {"short.mp4","thumbnail.png","captions.json","metadata.json","manifest.json","render-plan.json","qualification.json"}
           PY
