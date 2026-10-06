@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""ShortForge M2.1 CLI."""
+"""ShortForge M2.2 CLI."""
 from __future__ import annotations
 import argparse, json
 from pathlib import Path
@@ -10,6 +10,7 @@ from shortforge_storyboard import ExpansionRequest, expand_variant
 from shortforge_assets import compile_manifest, MEDIA_PROVIDER_CONTRACT
 from shortforge_workspace import materialize_workspace
 from shortforge_media import resolve_workspace
+from shortforge_render import render_workspace
 REQUIRED=("version","kind","id","title","format","timeline")
 def load(path):
     with Path(path).open(encoding="utf-8") as x: return yaml.safe_load(x)
@@ -62,8 +63,13 @@ def main():
     aassets=sp.add_parser("assets"); aassets.add_argument("storyboard")
     w=sp.add_parser("materialize"); w.add_argument("manifest"); w.add_argument("output")
     r=sp.add_parser("resolve"); r.add_argument("workspace")
+    rr=sp.add_parser("render"); rr.add_argument("workspace"); rr.add_argument("--output",default="output/short.mp4"); rr.add_argument("--plan-only",action="store_true")
     sp.add_parser("media-contracts")
     a=ap.parse_args()
+    if a.cmd=="render":
+        try: result=render_workspace(a.workspace,a.output,execute=not a.plan_only)
+        except (ValueError, __import__("subprocess").CalledProcessError) as e: raise SystemExit(f"ERROR: {e}")
+        print(json.dumps(result,indent=2)); return
     if a.cmd=="resolve":
         try: result=resolve_workspace(a.workspace)
         except ValueError as e: raise SystemExit(f"ERROR: {e}")
@@ -98,5 +104,5 @@ def main():
         print(json.dumps(variants(p) if a.cmd=="variants" else rank_variants(p),indent=2)); return
     e=validate(p)
     if e: print("\n".join(f"ERROR: {x}" for x in e)); raise SystemExit(1)
-    print("OK: valid ShortForge M2.1 project" if a.cmd=="validate" else json.dumps(score(p),indent=2))
+    print("OK: valid ShortForge M2.2 project" if a.cmd=="validate" else json.dumps(score(p),indent=2))
 if __name__=="__main__": main()
