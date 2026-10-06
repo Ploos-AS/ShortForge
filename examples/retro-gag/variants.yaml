@@ -1,0 +1,25 @@
+version: "0.1"
+kind: ShortForgeVariantSet
+id: retro-gag-hooks-001
+source_project: sf-retro-gag-001
+variants:
+  - id: breaking-news
+    hook: "BREAKING: Commodore announces the Amiga 9000."
+    angle: "dead-serious future news"
+    payoff: "A PC user quietly asks whether it runs Doom."
+  - id: keynote
+    hook: "Welcome to the most important computer launch of 2026."
+    angle: "overproduced keynote for absurdly retro specifications"
+    payoff: "The audience erupts when a floppy drive is revealed."
+  - id: future-review
+    hook: "I finally got the new Amiga. Here's what nobody tells you."
+    angle: "modern influencer review of alternate-history hardware"
+    payoff: "The revolutionary feature is a second mouse button."
+  - id: benchmark
+    hook: "We benchmarked the Amiga 9000 against a modern PC."
+    angle: "serious benchmark language applied to ridiculous tests"
+    payoff: "The Amiga wins because the test is loading Deluxe Paint."
+  - id: pc-reaction
+    hook: "PC users react to Commodore's new machine."
+    angle: "reaction escalation"
+    payoff: "Everyone stays calm until the presenter says 'custom chipset'."
