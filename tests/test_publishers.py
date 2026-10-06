@@ -18,7 +18,8 @@ class TestPublishers(unittest.TestCase):
    self.assertEqual(r["status"],"published"); self.assertTrue((dst/"short.mp4").is_file())
  def test_youtube_is_implemented(self):
   self.assertEqual(get_publisher("youtube").name,"youtube")
+ def test_tiktok_is_implemented(self):
+  self.assertEqual(get_publisher("tiktok").name,"tiktok")
  def test_remaining_network_publishers_are_unimplemented(self):
-  for name in ("tiktok","instagram"):
-   with self.assertRaisesRegex(ValueError,"not implemented"): get_publisher(name)
+  with self.assertRaisesRegex(ValueError,"not implemented"): get_publisher("instagram")
 if __name__=="__main__": unittest.main()
