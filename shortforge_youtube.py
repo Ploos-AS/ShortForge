@@ -1,10 +1,14 @@
 """YouTube publisher request planning and resumable upload transport."""
 from pathlib import Path
-import json, urllib.request, urllib.parse
+import json, os, urllib.request, urllib.parse
 from shortforge_publishers import Publisher, validate_package
 
 UPLOAD_SCOPE="https://www.googleapis.com/auth/youtube.upload"
 CAPTION_SCOPE="https://www.googleapis.com/auth/youtube.force-ssl"
+
+def resolve_access_token(explicit=None, env_name="SHORTFORGE_YOUTUBE_ACCESS_TOKEN"):
+    """Resolve a bearer token without persisting it in ShortForge artifacts."""
+    return explicit or os.environ.get(env_name)
 
 def build_youtube_plan(package, privacy="private"):
     root=Path(package); validate_package(root)
@@ -45,10 +49,11 @@ def upload_caption(video_id,caption_file,access_token,language="en",name="ShortF
 class YouTubePublisher(Publisher):
     name="youtube"
     def __init__(self, transport=None): self.transport=transport or urllib.request.urlopen
-    def publish(self, package, access_token=None, privacy="private", dry_run=False, upload_thumbnail_after=True, **kwargs):
+    def publish(self, package, access_token=None, caption_access_token=None, privacy="private", dry_run=False, upload_thumbnail_after=True, upload_captions_after=False, caption_language="en", result_file=None, **kwargs):
         plan=build_youtube_plan(package,privacy)
-        if dry_run: return {"kind":"ShortForgePublishResult","version":"0.1","publisher":"youtube","status":"dry-run","remote":False,"plan":plan}
-        if not access_token: raise ValueError("YouTube publisher requires OAuth access token")
+        if dry_run: return {"kind":"ShortForgePublishResult","version":"0.2","publisher":"youtube","status":"dry-run","remote":False,"plan":plan}
+        access_token=resolve_access_token(access_token)
+        if not access_token: raise ValueError("YouTube publisher requires OAuth access token or SHORTFORGE_YOUTUBE_ACCESS_TOKEN")
         video=Path(plan["video"]); data=json.dumps(plan["body"]).encode()
         url="https://www.googleapis.com/upload/youtube/v3/videos?uploadType=resumable&part=snippet,status"
         req=urllib.request.Request(url,data=data,method="POST",headers={"Authorization":"Bearer "+access_token,"Content-Type":"application/json; charset=UTF-8","X-Upload-Content-Length":str(video.stat().st_size),"X-Upload-Content-Type":"video/mp4"})
@@ -60,4 +65,14 @@ class YouTubePublisher(Publisher):
         thumb=False
         if upload_thumbnail_after:
             upload_thumbnail(result["id"],plan["thumbnail"],access_token,self.transport); thumb=True
-        return {"kind":"ShortForgePublishResult","version":"0.1","publisher":"youtube","status":"published","remote":True,"video_id":result["id"],"thumbnail_uploaded":thumb}
+        caption_result=None
+        if upload_captions_after:
+            caption=Path(package)/"captions.srt"
+            if not caption.is_file(): raise ValueError("publishing package has no captions.srt")
+            caption_access_token=resolve_access_token(caption_access_token,"SHORTFORGE_YOUTUBE_CAPTION_ACCESS_TOKEN")
+            if not caption_access_token: raise ValueError("YouTube caption upload requires separate OAuth token with youtube.force-ssl")
+            caption_result=upload_caption(result["id"],caption,caption_access_token,caption_language,transport=self.transport)
+        publish_result={"kind":"ShortForgePublishResult","version":"0.2","publisher":"youtube","status":"published","remote":True,"video_id":result["id"],"video_url":"https://youtu.be/"+result["id"],"thumbnail_uploaded":thumb,"caption":caption_result}
+        if result_file:
+            Path(result_file).write_text(json.dumps(publish_result,indent=2)+"\\n",encoding="utf-8")
+        return publish_result
