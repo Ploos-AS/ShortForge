@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""ShortForge M2.5 CLI."""
+"""ShortForge M2.6 CLI."""
 from __future__ import annotations
 import argparse, json
 from pathlib import Path
@@ -13,6 +13,7 @@ from shortforge_media import resolve_workspace
 from shortforge_render import render_workspace
 from shortforge_qualify import qualify_video
 from shortforge_production import PRODUCTION_PROFILES
+from shortforge_publish import build_publish_package
 REQUIRED=("version","kind","id","title","format","timeline")
 def load(path):
     with Path(path).open(encoding="utf-8") as x: return yaml.safe_load(x)
@@ -67,8 +68,13 @@ def main():
     r=sp.add_parser("resolve"); r.add_argument("workspace")
     rr=sp.add_parser("render"); rr.add_argument("workspace"); rr.add_argument("--output",default="output/short.mp4"); rr.add_argument("--plan-only",action="store_true"); rr.add_argument("--production-profile",default="generic-vertical",choices=PRODUCTION_PROFILES)
     qq=sp.add_parser("qualify-render"); qq.add_argument("video"); qq.add_argument("--duration",type=float)
+    pub=sp.add_parser("package"); pub.add_argument("workspace"); pub.add_argument("--destination",default="publish"); pub.add_argument("--title")
     sp.add_parser("media-contracts")
     a=ap.parse_args()
+    if a.cmd=="package":
+        try: result=build_publish_package(a.workspace,a.destination,a.title)
+        except (ValueError, __import__("subprocess").CalledProcessError) as e: raise SystemExit(f"ERROR: {e}")
+        print(json.dumps(result,indent=2)); return
     if a.cmd=="qualify-render":
         try: result=qualify_video(a.video,a.duration)
         except (ValueError, __import__("subprocess").CalledProcessError) as e: raise SystemExit(f"ERROR: {e}")
@@ -111,5 +117,5 @@ def main():
         print(json.dumps(variants(p) if a.cmd=="variants" else rank_variants(p),indent=2)); return
     e=validate(p)
     if e: print("\n".join(f"ERROR: {x}" for x in e)); raise SystemExit(1)
-    print("OK: valid ShortForge M2.5 project" if a.cmd=="validate" else json.dumps(score(p),indent=2))
+    print("OK: valid ShortForge M2.6 project" if a.cmd=="validate" else json.dumps(score(p),indent=2))
 if __name__=="__main__": main()
