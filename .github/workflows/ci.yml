@@ -22,6 +22,8 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
           cache: pip
+      - name: Install FFmpeg
+        run: sudo apt-get update && sudo apt-get install -y ffmpeg
       - name: Install
         run: python -m pip install .
       - name: Unit tests
@@ -34,3 +36,20 @@ jobs:
           shortforge select examples/retro-gag/variants.yaml
           shortforge generate "Amiga 9000 launch" --count 3 > /tmp/generated.yaml
           shortforge select /tmp/generated.yaml
+      - name: Render qualification
+        run: |
+          python - <<'PY'
+          import json, tempfile
+          from shortforge_workspace import materialize_workspace
+          from shortforge_media import resolve_workspace
+          from shortforge_render import render_workspace
+          from shortforge_qualify import qualify_video
+          root="/tmp/shortforge-render"
+          manifest={"kind":"ShortForgeAssetManifest","profile":"retro","format":"9:16","duration_seconds":2,"assets":[{"id":"beat-01-visual","type":"visual","required":True,"start":0,"end":2,"prompt":"fixture"},{"id":"beat-01-voice","type":"voice","required":True,"start":0,"end":2,"text":"fixture"},{"id":"beat-01-caption","type":"caption","required":True,"start":0,"end":2,"text":"ShortForge"}]}
+          materialize_workspace(manifest,root)
+          resolve_workspace(root)
+          render_workspace(root)
+          q=qualify_video(root+"/output/short.mp4",2)
+          print(json.dumps(q,indent=2))
+          if not q["passed"]: raise SystemExit(q["errors"])
+          PY
