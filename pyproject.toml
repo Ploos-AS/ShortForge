@@ -9,4 +9,4 @@ dependencies = ["PyYAML>=6.0"]
 shortforge = "shortforge_cli:main"
 
 [tool.setuptools]
-py-modules = ["shortforge_cli", "shortforge_providers", "shortforge_profiles", "shortforge_storyboard", "shortforge_assets", "shortforge_workspace", "shortforge_media", "shortforge_render", "shortforge_qualify"]
+py-modules = ["shortforge_cli", "shortforge_providers", "shortforge_profiles", "shortforge_storyboard", "shortforge_assets", "shortforge_workspace", "shortforge_media", "shortforge_render", "shortforge_qualify", "shortforge_production"]
