@@ -59,7 +59,42 @@ Return JSON only as an object with key "variants". Each variant must contain str
             v.setdefault("id",f"generated-{i+1:02d}")
         return variant_set(request,self.name,vs)
 
+class OpenAIResponsesProvider(Provider):
+    """Native OpenAI Responses API adapter."""
+    name="openai-responses"
+    def __init__(self, api_key=None, model=None, transport=_http_json):
+        self.api_key=api_key if api_key is not None else os.getenv("OPENAI_API_KEY","")
+        self.model=model or os.getenv("SHORTFORGE_OPENAI_RESPONSES_MODEL","gpt-6-luna")
+        self.transport=transport
+    def generate_variants(self, request):
+        if not request.idea.strip(): raise ValueError("idea must not be empty")
+        if request.count<1 or request.count>20: raise ValueError("count must be between 1 and 20")
+        prompt=f"""Generate exactly {request.count} short-form video concepts for: {request.idea}
+Return JSON only with key variants; each variant has id, hook, angle and payoff."""
+        payload={"model":self.model,"input":[{"role":"user","content":prompt}],"text":{"format":{"type":"json_object"}}}
+        headers={"Authorization":f"Bearer {self.api_key}"} if self.api_key else {}
+        response=self.transport("https://api.openai.com/v1/responses",headers,payload)
+        try:
+            parts=[part for item in response["output"] if item.get("type")=="message" for part in item.get("content",[]) if part.get("type")=="output_text"]
+            data=json.loads(parts[0]["text"])
+        except (KeyError,IndexError,TypeError,json.JSONDecodeError) as e: raise ValueError("provider returned invalid Responses output") from e
+        vs=data.get("variants") if isinstance(data,dict) else None
+        if not isinstance(vs,list) or len(vs)!=request.count: raise ValueError("provider returned wrong variant count")
+        for i,v in enumerate(vs):
+            if not isinstance(v,dict) or not all(isinstance(v.get(k),str) and v[k].strip() for k in ("hook","angle","payoff")): raise ValueError(f"provider returned invalid variant at index {i}")
+            v.setdefault("id",f"generated-{i+1:02d}")
+        return variant_set(request,self.name,vs)
+
+PROVIDER_INFO={
+    "deterministic":{"network":False,"api_key":False,"protocol":"offline"},
+    "openai-compatible":{"network":True,"api_key":"optional","protocol":"chat-completions"},
+    "openai-responses":{"network":True,"api_key":True,"protocol":"responses"},
+}
+def provider_info():
+    return PROVIDER_INFO.copy()
+
 def get_provider(name: str) -> Provider:
     if name=="deterministic": return DeterministicProvider()
     if name in ("openai-compatible","openai"): return OpenAICompatibleProvider()
+    if name=="openai-responses": return OpenAIResponsesProvider()
     raise ValueError(f"unknown provider: {name}")
