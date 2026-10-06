@@ -84,3 +84,8 @@ python shortforge_cli.py publish youtube publish/package \\
 ```
 
 The result file contains publication identifiers/status only; OAuth credentials are never persisted in ShortForge artifacts.
+
+
+## M2.12 TikTok publisher
+
+ShortForge supports TikTok Direct Post through the official Content Posting API using local FILE_UPLOAD. The default privacy level is `SELF_ONLY`; creator-selected privacy must be honored by production integrations. OAuth can be supplied with `SHORTFORGE_TIKTOK_ACCESS_TOKEN` instead of a command-line token. Use `--is-aigc` when the exported video is AI-generated so the API can carry the platform AIGC disclosure flag. Live results are recorded as submitted/processing because TikTok processes posts asynchronously.

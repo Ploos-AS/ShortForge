@@ -6,7 +6,7 @@ import json, shutil
 PUBLISHER_INFO={
  "filesystem":{"network":False,"implemented":True,"requires_auth":False,"supports":["video","thumbnail","captions","metadata"]},
  "youtube":{"network":True,"implemented":True,"requires_auth":True,"supports":["video","thumbnail","metadata","captions"]},
- "tiktok":{"network":True,"implemented":False,"requires_auth":True,"supports":["video","metadata"]},
+ "tiktok":{"network":True,"implemented":True,"requires_auth":True,"supports":["video","metadata"]},
  "instagram":{"network":True,"implemented":False,"requires_auth":True,"supports":["video","thumbnail","metadata"]},
 }
 REQUIRED_PACKAGE_FILES={"package.json","short.mp4","thumbnail.png","captions.json","metadata.json","manifest.json","render-plan.json","qualification.json"}
@@ -39,5 +39,8 @@ def get_publisher(name):
     if name=="youtube":
         from shortforge_youtube import YouTubePublisher
         return YouTubePublisher()
+    if name=="tiktok":
+        from shortforge_tiktok import TikTokPublisher
+        return TikTokPublisher()
     if name in PUBLISHER_INFO: raise ValueError(f"publisher not implemented: {name}")
     raise ValueError(f"unknown publisher: {name}")
