@@ -4,13 +4,13 @@ AI-assisted production pipeline for short-form vertical video.
 
 ShortForge optimizes concepts for hooks, retention, payoff, comedy, looping, captions and platform-specific cuts rather than treating a short video as a miniature conventional film.
 
-## M0 goals
-
-M0 defines a provider-neutral short-video project format and a repeatable path from an idea to multiple optimized edits.
+## Pipeline
 
 ```text
 idea
  -> concept variants
+ -> structural scoring
+ -> candidate selection
  -> hook
  -> script
  -> comedy / payoff pass
@@ -41,19 +41,29 @@ idea
 - Hooks, escalation, payoff and loops are machine-readable.
 - Reuse FilmForge/provider infrastructure where sensible without coupling the projects.
 
+## CLI
+
+```sh
+shortforge validate examples/retro-gag/project.yaml
+shortforge score examples/retro-gag/project.yaml
+shortforge variants examples/retro-gag/variants.yaml
+shortforge select examples/retro-gag/variants.yaml
+```
+
 ## Repository layout
 
 ```text
 docs/
-  architecture.md
-  m0.md
 schema/
-  shortforge-project.schema.yaml
 examples/
-  retro-gag/
-    project.yaml
+tests/
+shortforge_cli.py
 ```
 
 ## Status
 
-M0 — foundation.
+- M0 — foundation
+- M1 — executable CLI
+- M1.1 — ideation/variant foundation
+- M1.2 — deterministic selection pipeline
+- M1.3 — CI and qualification
