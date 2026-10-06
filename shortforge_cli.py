@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""ShortForge M2.6 CLI."""
+"""ShortForge M2.7 CLI."""
 from __future__ import annotations
 import argparse, json
 from pathlib import Path
@@ -14,6 +14,7 @@ from shortforge_render import render_workspace
 from shortforge_qualify import qualify_video
 from shortforge_production import PRODUCTION_PROFILES
 from shortforge_publish import build_publish_package
+from shortforge_publishers import PUBLISHER_INFO, get_publisher
 REQUIRED=("version","kind","id","title","format","timeline")
 def load(path):
     with Path(path).open(encoding="utf-8") as x: return yaml.safe_load(x)
@@ -70,7 +71,14 @@ def main():
     qq=sp.add_parser("qualify-render"); qq.add_argument("video"); qq.add_argument("--duration",type=float)
     pub=sp.add_parser("package"); pub.add_argument("workspace"); pub.add_argument("--destination",default="publish"); pub.add_argument("--title")
     sp.add_parser("media-contracts")
+    sp.add_parser("publishers")
+    pp=sp.add_parser("publish"); pp.add_argument("publisher",choices=PUBLISHER_INFO); pp.add_argument("package"); pp.add_argument("--destination")
     a=ap.parse_args()
+    if a.cmd=="publishers": print(json.dumps(PUBLISHER_INFO,indent=2)); return
+    if a.cmd=="publish":
+        try: result=get_publisher(a.publisher).publish(a.package,destination=a.destination)
+        except ValueError as e: raise SystemExit(f"ERROR: {e}")
+        print(json.dumps(result,indent=2)); return
     if a.cmd=="package":
         try: result=build_publish_package(a.workspace,a.destination,a.title)
         except (ValueError, __import__("subprocess").CalledProcessError) as e: raise SystemExit(f"ERROR: {e}")
@@ -117,5 +125,5 @@ def main():
         print(json.dumps(variants(p) if a.cmd=="variants" else rank_variants(p),indent=2)); return
     e=validate(p)
     if e: print("\n".join(f"ERROR: {x}" for x in e)); raise SystemExit(1)
-    print("OK: valid ShortForge M2.6 project" if a.cmd=="validate" else json.dumps(score(p),indent=2))
+    print("OK: valid ShortForge M2.7 project" if a.cmd=="validate" else json.dumps(score(p),indent=2))
 if __name__=="__main__": main()
