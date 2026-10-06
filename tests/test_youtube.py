@@ -1,10 +1,10 @@
 import json,tempfile,unittest
 from pathlib import Path
-from shortforge_youtube import build_youtube_plan,build_caption_upload_plan,build_caption_multipart,upload_caption,YouTubePublisher,UPLOAD_SCOPE,CAPTION_SCOPE
+from shortforge_youtube import build_youtube_plan,build_caption_upload_plan,build_caption_multipart,upload_caption,resolve_access_token,YouTubePublisher,UPLOAD_SCOPE,CAPTION_SCOPE
 class TestYouTube(unittest.TestCase):
  def fixture(self,r):
   for f in ("short.mp4","thumbnail.png","captions.json","manifest.json","render-plan.json","qualification.json"): (r/f).write_bytes(b"x")
-  (r/"metadata.json").write_text(json.dumps({"title":"Demo"})); (r/"package.json").write_text(json.dumps({"kind":"ShortForgePublishingPackage","qualified":True}))
+  (r/"metadata.json").write_text(json.dumps({"title":"Demo"})); (r/"package.json").write_text(json.dumps({"kind":"ShortForgePublishingPackage","qualified":True})); (r/"captions.srt").write_text("1\\n00:00:00,000 --> 00:00:01,000\\nHei\\n",encoding="utf-8")
  def test_dry_run(self):
   with tempfile.TemporaryDirectory() as d:
    r=Path(d); self.fixture(r); x=YouTubePublisher().publish(r,privacy="unlisted",dry_run=True)
@@ -46,6 +46,25 @@ class TestYouTube(unittest.TestCase):
   with tempfile.TemporaryDirectory() as d:
    p=Path(d)/"c.srt"; p.write_text("x")
    with self.assertRaisesRegex(ValueError,"youtube.force-ssl"): upload_caption("v",p,None)
+ def test_integrated_caption_and_result_file(self):
+  class Response:
+   def __init__(self,headers=None,body=b""): self.headers=headers or {}; self.body=body
+   def __enter__(self): return self
+   def __exit__(self,*a): pass
+   def read(self): return self.body
+  calls=[]
+  def transport(req):
+   calls.append(req)
+   if "videos?uploadType=resumable" in req.full_url: return Response({"Location":"https://upload.example/session"})
+   if req.full_url=="https://upload.example/session": return Response(body=json.dumps({"id":"video-456"}).encode())
+   if "captions?" in req.full_url: return Response(body=json.dumps({"id":"caption-456"}).encode())
+   return Response(body=b"{}")
+  with tempfile.TemporaryDirectory() as d:
+   r=Path(d); self.fixture(r); out=r/"publish-result.json"
+   result=YouTubePublisher(transport).publish(r,access_token="upload-token",caption_access_token="caption-token",upload_captions_after=True,caption_language="no",result_file=out)
+   self.assertEqual(result["video_url"],"https://youtu.be/video-456"); self.assertEqual(result["caption"]["caption_id"],"caption-456")
+   self.assertEqual(json.loads(out.read_text())["video_id"],"video-456")
+   self.assertEqual(len(calls),4)
  def test_requires_token_for_network(self):
   with tempfile.TemporaryDirectory() as d:
    r=Path(d); self.fixture(r)
