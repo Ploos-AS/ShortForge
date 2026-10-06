@@ -1,7 +1,7 @@
 import os
-import json,tempfile,unittest
+import json,tempfile,unittest,urllib.error
 from pathlib import Path
-from shortforge_youtube import build_youtube_plan,build_caption_upload_plan,build_caption_multipart,upload_caption,resolve_access_token,YouTubePublisher,UPLOAD_SCOPE,CAPTION_SCOPE
+from shortforge_youtube import build_youtube_plan,build_caption_upload_plan,build_caption_multipart,upload_caption,resumable_upload,resolve_access_token,YouTubePublisher,UPLOAD_SCOPE,CAPTION_SCOPE
 class TestYouTube(unittest.TestCase):
  def fixture(self,r):
   for f in ("short.mp4","thumbnail.png","captions.json","manifest.json","render-plan.json","qualification.json"): (r/f).write_bytes(b"x")
@@ -73,6 +73,24 @@ class TestYouTube(unittest.TestCase):
   finally:
    if old is None: os.environ.pop("SHORTFORGE_YOUTUBE_ACCESS_TOKEN",None)
    else: os.environ["SHORTFORGE_YOUTUBE_ACCESS_TOKEN"]=old
+ def test_resume_after_retriable_failure(self):
+  class Response:
+   def __init__(self,body=b"",headers=None): self.body=body; self.headers=headers or {}
+   def __enter__(self): return self
+   def __exit__(self,*a): pass
+   def read(self): return self.body
+  calls=[]
+  def transport(req):
+   calls.append(req)
+   if len(calls)==1: raise urllib.error.HTTPError(req.full_url,503,"busy",{},None)
+   if len(calls)==2: raise urllib.error.HTTPError(req.full_url,308,"resume",{"Range":"bytes=0-3"},None)
+   return Response(json.dumps({"id":"resumed-video"}).encode())
+  with tempfile.TemporaryDirectory() as d:
+   p=Path(d)/"v.mp4"; p.write_bytes(b"abcdefgh")
+   sleeps=[]; result=resumable_upload("https://upload.example/session",p,"token",transport,max_retries=2,sleep=sleeps.append)
+   self.assertEqual(result["id"],"resumed-video"); self.assertEqual(sleeps,[1])
+   self.assertEqual(calls[1].headers["Content-range"],"bytes */8")
+   self.assertEqual(calls[2].headers["Content-range"],"bytes 4-7/8"); self.assertEqual(calls[2].data,b"efgh")
  def test_requires_token_for_network(self):
   with tempfile.TemporaryDirectory() as d:
    r=Path(d); self.fixture(r)
