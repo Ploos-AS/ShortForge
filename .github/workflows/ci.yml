@@ -67,3 +67,19 @@ jobs:
           assert result["status"]=="published"
           assert (delivery/"short.mp4").is_file()
           PY
+
+  oci:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build Alpine OCI image
+        run: docker build -t shortforge:ci .
+      - name: CLI smoke in OCI
+        run: |
+          docker run --rm -v "$PWD:/work" shortforge:ci validate examples/retro-gag/project.yaml
+          docker run --rm -v "$PWD:/work" shortforge:ci score examples/retro-gag/project.yaml
+      - name: Render and qualify inside OCI
+        run: |
+          mkdir -p /tmp/shortforge-oci
+          docker run --rm --entrypoint python -v "$PWD:/src:ro" -v "/tmp/shortforge-oci:/work" shortforge:ci -c 'from shortforge_workspace import materialize_workspace; from shortforge_media import resolve_workspace; from shortforge_render import render_workspace; from shortforge_qualify import qualify_video; m={"kind":"ShortForgeAssetManifest","profile":"retro","format":"9:16","duration_seconds":2,"assets":[{"id":"v","type":"visual","required":True,"start":0,"end":2,"prompt":"fixture"},{"id":"a","type":"voice","required":True,"start":0,"end":2,"text":"fixture"},{"id":"c","type":"caption","required":True,"start":0,"end":2,"text":"ShortForge OCI"}]}; materialize_workspace(m,"/work/job"); resolve_workspace("/work/job"); render_workspace("/work/job"); q=qualify_video("/work/job/output/short.mp4",2); print(q); assert q["passed"]'
+          test -s /tmp/shortforge-oci/job/output/short.mp4
