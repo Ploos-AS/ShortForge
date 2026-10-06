@@ -1,3 +1,4 @@
+import os
 import json,tempfile,unittest
 from pathlib import Path
 from shortforge_youtube import build_youtube_plan,build_caption_upload_plan,build_caption_multipart,upload_caption,resolve_access_token,YouTubePublisher,UPLOAD_SCOPE,CAPTION_SCOPE
