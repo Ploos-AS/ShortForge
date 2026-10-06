@@ -16,6 +16,9 @@ class TestPublishers(unittest.TestCase):
    src=Path(d)/"src"; src.mkdir(); self.fixture(src); dst=Path(d)/"out"
    r=get_publisher("filesystem").publish(src,destination=dst)
    self.assertEqual(r["status"],"published"); self.assertTrue((dst/"short.mp4").is_file())
- def test_network_publishers_are_explicitly_unimplemented(self):
-  with self.assertRaisesRegex(ValueError,"not implemented"): get_publisher("youtube")
+ def test_youtube_is_implemented(self):
+  self.assertEqual(get_publisher("youtube").name,"youtube")
+ def test_remaining_network_publishers_are_unimplemented(self):
+  for name in ("tiktok","instagram"):
+   with self.assertRaisesRegex(ValueError,"not implemented"): get_publisher(name)
 if __name__=="__main__": unittest.main()
