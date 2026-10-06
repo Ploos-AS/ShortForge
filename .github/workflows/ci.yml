@@ -55,12 +55,12 @@ jobs:
           from shortforge_publish import build_publish_package
           p=build_publish_package(root,title="CI qualification fixture")
           assert p["qualified"]
+          import pathlib
           required={"short.mp4","thumbnail.png","captions.json","metadata.json","manifest.json","render-plan.json","qualification.json"}
           assert required.issubset(set(p["files"]))
           srt=pathlib.Path(root)/"publish"/"captions.srt"
           if "captions.srt" in p["files"]: assert srt.is_file()
           from shortforge_publishers import get_publisher
-          import pathlib
           delivery=pathlib.Path(root).parent/"shortforge-delivery"
           if delivery.exists(): import shutil; shutil.rmtree(delivery)
           result=get_publisher("filesystem").publish(pathlib.Path(root)/"publish",destination=delivery)
