@@ -67,3 +67,20 @@ shortforge_cli.py
 - M1.1 — ideation/variant foundation
 - M1.2 — deterministic selection pipeline
 - M1.3 — CI and qualification
+
+
+## M2.11 YouTube publishing UX
+
+YouTube publishing can resolve the normal upload bearer token from `SHORTFORGE_YOUTUBE_ACCESS_TOKEN` instead of placing it on the command line. Caption upload remains opt-in and deliberately requires a separate token, supplied with `--caption-access-token` or `SHORTFORGE_YOUTUBE_CAPTION_ACCESS_TOKEN`, because captions use the stronger `youtube.force-ssl` scope.
+
+Example:
+
+```sh
+SHORTFORGE_YOUTUBE_ACCESS_TOKEN=... \\
+SHORTFORGE_YOUTUBE_CAPTION_ACCESS_TOKEN=... \\
+python shortforge_cli.py publish youtube publish/package \\
+  --privacy private --upload-captions --caption-language no \\
+  --result-file publish-result.json
+```
+
+The result file contains publication identifiers/status only; OAuth credentials are never persisted in ShortForge artifacts.
