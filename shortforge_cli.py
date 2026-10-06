@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
-"""ShortForge M1.7 CLI."""
+"""ShortForge M1.8 CLI."""
 from __future__ import annotations
 import argparse, json
 from pathlib import Path
 import yaml
 from shortforge_providers import GenerationRequest, get_provider, provider_info
 from shortforge_profiles import profile_info
+from shortforge_storyboard import ExpansionRequest, expand_variant
 REQUIRED=("version","kind","id","title","format","timeline")
 def load(path):
     with Path(path).open(encoding="utf-8") as x: return yaml.safe_load(x)
@@ -54,7 +55,14 @@ def main():
         q=sp.add_parser(cmd); q.add_argument("project")
     g=sp.add_parser("generate"); g.add_argument("idea"); g.add_argument("--count",type=int,default=5); g.add_argument("--provider",default="deterministic"); g.add_argument("--source-project"); g.add_argument("--profile",default="default")
     sp.add_parser("providers"); sp.add_parser("profiles")
+    e=sp.add_parser("expand"); e.add_argument("variants"); e.add_argument("--index",type=int,default=0); e.add_argument("--profile",default="default"); e.add_argument("--provider",default="deterministic")
     a=ap.parse_args()
+    if a.cmd=="expand":
+        data=load(a.variants); vs=data.get("variants",[])
+        if not vs or a.index<0 or a.index>=len(vs): raise SystemExit("ERROR: variant index out of range")
+        try: result=expand_variant(ExpansionRequest(data.get("idea",""),vs[a.index],a.profile),a.provider)
+        except ValueError as e: raise SystemExit(f"ERROR: {e}")
+        print(yaml.safe_dump(result,sort_keys=False,allow_unicode=True)); return
     if a.cmd=="profiles":
         print(json.dumps(profile_info(),indent=2)); return
     if a.cmd=="providers":
@@ -69,5 +77,5 @@ def main():
         print(json.dumps(variants(p) if a.cmd=="variants" else rank_variants(p),indent=2)); return
     e=validate(p)
     if e: print("\n".join(f"ERROR: {x}" for x in e)); raise SystemExit(1)
-    print("OK: valid ShortForge M1.7 project" if a.cmd=="validate" else json.dumps(score(p),indent=2))
+    print("OK: valid ShortForge M1.8 project" if a.cmd=="validate" else json.dumps(score(p),indent=2))
 if __name__=="__main__": main()
