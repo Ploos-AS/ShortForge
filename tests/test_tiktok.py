@@ -26,17 +26,27 @@ class TestTikTok(unittest.TestCase):
   calls=[]
   def transport(req):
    calls.append(req)
-   if req.get_method()=="POST":
+   if "creator_info/query" in req.full_url:
+    return R(json.dumps({"data":{"creator_username":"tester","privacy_level_options":["SELF_ONLY"],"max_video_post_duration_sec":300},"error":{"code":"ok"}}).encode())
+   if "video/init" in req.full_url:
     return R(json.dumps({"data":{"publish_id":"pub-123","upload_url":"https://upload.example/tiktok"},"error":{"code":"ok"}}).encode())
    return R()
   with tempfile.TemporaryDirectory() as d:
    r=Path(d); self.fixture(r); out=r/"result.json"
    x=TikTokPublisher(transport).publish(r,access_token="token",result_file=out,is_aigc=True)
    self.assertEqual(x["publish_id"],"pub-123"); self.assertEqual(x["status"],"submitted")
-   self.assertEqual([q.get_method() for q in calls],["POST","PUT"])
-   self.assertEqual(calls[1].headers["Content-range"],"bytes 0-4/5")
-   self.assertTrue(json.loads(calls[0].data)["post_info"]["is_aigc"])
-   self.assertEqual(json.loads(out.read_text())["publish_id"],"pub-123")
+   self.assertEqual([q.get_method() for q in calls],["POST","POST","PUT"])
+   self.assertEqual(calls[2].headers["Content-range"],"bytes 0-4/5")
+   self.assertTrue(json.loads(calls[1].data)["post_info"]["is_aigc"])
+   self.assertEqual(json.loads(out.read_text())["publish_id"],"pub-123"); self.assertEqual(x["creator_username"],"tester")
+ def test_rejects_unavailable_privacy(self):
+  class R:
+   def __enter__(self): return self
+   def __exit__(self,*a): pass
+   def read(self): return json.dumps({"data":{"privacy_level_options":["SELF_ONLY"]},"error":{"code":"ok"}}).encode()
+  with tempfile.TemporaryDirectory() as d:
+   r=Path(d); self.fixture(r)
+   with self.assertRaisesRegex(ValueError,"privacy level"): TikTokPublisher(lambda req:R()).publish(r,access_token="token",privacy_level="PUBLIC_TO_EVERYONE")
  def test_requires_token(self):
   with tempfile.TemporaryDirectory() as d:
    r=Path(d); self.fixture(r)
