@@ -1,0 +1,53 @@
+version: "0.1"
+kind: ShortForgeProject
+id: sf-retro-gag-001
+title: "POV: Commodore Survived"
+premise: "A straight-faced future product launch treats tiny retro-computing improvements as civilization-changing breakthroughs."
+audience: "retro-computing and technology viewers"
+tone:
+  - deadpan
+  - absurd
+comedy_modes:
+  - retro
+  - escalation
+  - anti-joke
+
+format:
+  aspect_ratio: "9:16"
+  duration_target_seconds: 18
+  fps: 30
+
+timeline:
+  - start: 0
+    end: 2
+    functions: [hook]
+    script: "COMMODORE ANNOUNCES AMIGA 9000"
+    caption: "COMMODORE ANNOUNCES AMIGA 9000"
+    audio: "urgent news sting"
+    shots: [s001]
+
+  - start: 2
+    end: 7
+    functions: [setup, escalation]
+    script: "It ships with sixteen megabytes of RAM."
+    caption: "16 MB RAM"
+    audio: "crowd begins cheering"
+    shots: [s002]
+
+  - start: 7
+    end: 12
+    functions: [escalation]
+    script: "And a 68060."
+    caption: "68060"
+    audio: "crowd chaos"
+    shots: [s003]
+
+  - start: 12
+    end: 18
+    functions: [payoff, loop]
+    script: "But can it run Doom?"
+    caption: "BUT CAN IT RUN DOOM?"
+    audio: "hard cut to silence"
+    shots: [s004]
+
+variants: []
