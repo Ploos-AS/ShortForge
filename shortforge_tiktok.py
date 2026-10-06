@@ -5,6 +5,7 @@ from shortforge_publishers import Publisher, validate_package
 
 PUBLISH_SCOPE="video.publish"
 INIT_URL="https://open.tiktokapis.com/v2/post/publish/video/init/"
+CREATOR_INFO_URL="https://open.tiktokapis.com/v2/post/publish/creator_info/query/"
 
 def resolve_access_token(explicit=None):
     return explicit or os.environ.get("SHORTFORGE_TIKTOK_ACCESS_TOKEN")
@@ -19,6 +20,15 @@ def build_tiktok_plan(package, privacy_level="SELF_ONLY", title=None, is_aigc=Fa
           "source_info":{"source":"FILE_UPLOAD","video_size":size,"chunk_size":size,"total_chunk_count":1}}
     return {"kind":"ShortForgeTikTokPublishPlan","version":"0.1","video":str(video),"scope":PUBLISH_SCOPE,"body":body}
 
+def query_creator_info(access_token,transport=urllib.request.urlopen):
+    req=urllib.request.Request(CREATOR_INFO_URL,data=b"",method="POST",headers={"Authorization":"Bearer "+access_token,"Content-Type":"application/json; charset=UTF-8"})
+    with transport(req) as resp: result=json.loads(resp.read().decode())
+    error=result.get("error",{})
+    if error.get("code") not in (None,"ok"): raise ValueError("TikTok creator info failed: "+str(error.get("code")))
+    data=result.get("data",{})
+    if not data.get("privacy_level_options"): raise ValueError("TikTok creator info missing privacy options")
+    return data
+
 class TikTokPublisher(Publisher):
     name="tiktok"
     def __init__(self, transport=None): self.transport=transport or urllib.request.urlopen
@@ -27,6 +37,12 @@ class TikTokPublisher(Publisher):
         if dry_run: return {"kind":"ShortForgePublishResult","version":"0.2","publisher":"tiktok","status":"dry-run","remote":False,"plan":plan}
         token=resolve_access_token(access_token)
         if not token: raise ValueError("TikTok publisher requires OAuth access token or SHORTFORGE_TIKTOK_ACCESS_TOKEN")
+        creator=query_creator_info(token,self.transport)
+        if privacy_level not in creator["privacy_level_options"]: raise ValueError("TikTok privacy level is not available for this creator")
+        meta=json.loads((Path(package)/"metadata.json").read_text(encoding="utf-8"))
+        duration=float(meta.get("duration_seconds",0) or 0)
+        max_duration=creator.get("max_video_post_duration_sec")
+        if max_duration is not None and duration>float(max_duration): raise ValueError("video exceeds creator TikTok maximum duration")
         payload=json.dumps(plan["body"]).encode()
         req=urllib.request.Request(INIT_URL,data=payload,method="POST",headers={"Authorization":"Bearer "+token,"Content-Type":"application/json; charset=UTF-8"})
         with self.transport(req) as resp: init=json.loads(resp.read().decode())
@@ -37,6 +53,6 @@ class TikTokPublisher(Publisher):
         video=Path(plan["video"]); media=video.read_bytes(); size=len(media)
         put=urllib.request.Request(upload_url,data=media,method="PUT",headers={"Content-Type":"video/mp4","Content-Length":str(size),"Content-Range":f"bytes 0-{size-1}/{size}"})
         with self.transport(put) as resp: resp.read()
-        result={"kind":"ShortForgePublishResult","version":"0.2","publisher":"tiktok","status":"submitted","remote":True,"publish_id":publish_id,"processing":True}
+        result={"kind":"ShortForgePublishResult","version":"0.2","publisher":"tiktok","status":"submitted","remote":True,"publish_id":publish_id,"processing":True,"creator_username":creator.get("creator_username")}
         if result_file: Path(result_file).write_text(json.dumps(result,indent=2)+"\n",encoding="utf-8")
         return result
