@@ -1,0 +1,38 @@
+version: "0.1"
+kind: ShortForgeProject
+
+required:
+  - id
+  - title
+  - format
+  - timeline
+
+fields:
+  id: string
+  title: string
+  premise: string
+  audience: string
+  tone: list
+  comedy_modes: list
+  format:
+    aspect_ratio: string
+    duration_target_seconds: number
+    fps: number
+  timeline:
+    - start: number
+      end: number
+      functions: list
+      script: string
+      caption: string
+      audio: string
+      shots: list
+  variants:
+    - id: string
+      duration_seconds: number
+      score:
+        hook: number
+        clarity: number
+        payoff: number
+        pacing: number
+        loop: number
+        feasibility: number
