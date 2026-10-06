@@ -74,5 +74,5 @@ class YouTubePublisher(Publisher):
             caption_result=upload_caption(result["id"],caption,caption_access_token,caption_language,transport=self.transport)
         publish_result={"kind":"ShortForgePublishResult","version":"0.2","publisher":"youtube","status":"published","remote":True,"video_id":result["id"],"video_url":"https://youtu.be/"+result["id"],"thumbnail_uploaded":thumb,"caption":caption_result}
         if result_file:
-            Path(result_file).write_text(json.dumps(publish_result,indent=2)+"\\n",encoding="utf-8")
+            Path(result_file).write_text(json.dumps(publish_result,indent=2)+"\n",encoding="utf-8")
         return publish_result
